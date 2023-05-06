@@ -1,6 +1,6 @@
 import cv2
-import pytesseract as tess
 import numpy as np
+import pytesseract as tess
 
 
 def rescale_for_ocr(image, tesseract_path, font_size=30):
@@ -29,7 +29,8 @@ def rescale_for_ocr(image, tesseract_path, font_size=30):
 
     scale = min(8, 3 * font_size / np.median(heights))
     rescaled_image = cv2.resize(orig_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-
+    cv2.imshow("rescaled", rescaled_image)
+    cv2.waitKey(0)
     return rescaled_image
 
 
