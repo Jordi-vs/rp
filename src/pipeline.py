@@ -134,5 +134,3 @@ if __name__ == "__main__":
     assert args.text_boxes in ['none', 'standard', 'fine tuned'], "Invalid text box location strategy"
     main(args)
 
-
-
