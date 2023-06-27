@@ -19,6 +19,8 @@ def main(args):
                 p = os.path.join(dir, file)
                 full_images_paths.append(p.replace("\\", "/"))
 
+        if not os.path.exists(args.storage_for_segmented_panels):
+            os.makedirs(args.storage_for_segmented_panels)
         segmented_panels_directory = args.storage_for_segmented_panels
         panel_extractor = PanelExtractor()
         # 136: 150
@@ -33,6 +35,8 @@ def main(args):
 
     cropped_paths = []
     if args.text_boxes != 'none':
+        if not os.path.exists(args.storage_for_cropped_text):
+            os.makedirs(args.storage_for_cropped_text)
         # iterate over all splitted images
         for path in segmented_panels_paths:
             images = crop_image_file(path, args.ocr_model, 0.8)

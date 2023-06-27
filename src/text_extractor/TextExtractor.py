@@ -23,9 +23,7 @@ def extract_text(img_paths, engine, rescale=False, binarize=False, clustering=Fa
     """
 
     result = {}
-    print(img_paths)
     for path in tqdm(img_paths):
-        print(path)
         image = cv2.imread(path)
         if rescale:
             image = rescale_for_ocr(image, tesseract_path)
