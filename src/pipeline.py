@@ -12,11 +12,11 @@ from text_extractor.TextExtractor import extract_text
 
 def main(args):
     segmented_panels_paths = []
-    if (not args.use_existing_panels):
+    if not args.use_existing_panels:
         full_images_paths = []
-        for dir, subdir, files in os.walk(args.comics_path):
+        for directory, subdir, files in os.walk(args.comics_path):
             for file in files:
-                p = os.path.join(dir, file)
+                p = os.path.join(directory, file)
                 full_images_paths.append(p.replace("\\", "/"))
 
         if not os.path.exists(args.storage_for_segmented_panels):
@@ -28,9 +28,9 @@ def main(args):
                                                                          segmented_panels_directory)
 
     else:
-        for dir, subdir, files in os.walk(args.comics_path):
+        for directory, subdir, files in os.walk(args.comics_path):
             for file in files:
-                p = os.path.join(dir, file)
+                p = os.path.join(directory, file)
                 segmented_panels_paths.append(p.replace("\\", "/"))
 
     cropped_paths = []
@@ -46,30 +46,33 @@ def main(args):
                 output_path = os.path.join(args.storage_for_cropped_text, output_filename)
                 cv2.imwrite(output_path, image)
                 cropped_paths.append(output_path)
+
+        # get transcriptions
+        transcriptions = extract_text(cropped_paths, args.ocr_model, clustering=True, text_panel=True)
+        transcriptions = concatenate_dictionary_values(transcriptions)
     else:
         cropped_paths = segmented_panels_paths
-    # get transcriptions
-    transcriptions = extract_text(cropped_paths, "vision-api", clustering=True, text_panel=True)
-
+        # get transcriptions
+        transcriptions = extract_text(cropped_paths, args.ocr_model, clustering=True, text_panel=True)
     # Write data to CSV file
-    if args.csv_path is None:
-        with open(args.csv_path, 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(['Image', 'Text'])  # Write header row
+    with open(args.csv_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Image', 'Text'])  # Write header row
 
-            for image_path, text in transcriptions.items():
-                writer.writerow([image_path, text])
+        for image_path, text in transcriptions.items():
+            writer.writerow([image_path, text])
 
     if args.accuracy_path is not None:
-        concatenated_transcriptions = get_names(transcriptions)
+        image_names = get_names(transcriptions)
         # ground_truth = extract_csv_information("../comics_data/Dilbert_test_data.csv")
+        assert os.path.exists(args.accuracy_path), "Path to ground truth CSV file does not exist"
         ground_truth = extract_csv_information(args.accuracy_path)
-        similarity_scores = calculate_similarity(concatenated_transcriptions, ground_truth)
+        similarity_scores = calculate_similarity(image_names, ground_truth)
         for key, score in similarity_scores.items():
             print(f"{key}: {score}")
             print(f"Ground truth: {ground_truth[key].lower()}")
-            print(f"Extracted text: {concatenated_transcriptions[key]}")
-        wer, cer = calculate_wer_cer_accuracy(concatenated_transcriptions, ground_truth)
+            print(f"Extracted text: {image_names[key]}")
+        wer, cer = calculate_wer_cer_accuracy(image_names, ground_truth)
         print(f"Word Accuracy (WER): {round(100 - wer, 2)}%")
         print(f"Character Accuracy (CER): {round(100 - cer, 2)}%")
         print(
@@ -82,6 +85,7 @@ def main(args):
             cv2.imshow("path", image)
             print(transcriptions[path])
             cv2.waitKey(0)
+
 
 def get_names(dictionary):
     result = {}
@@ -96,7 +100,7 @@ def concatenate_dictionary_values(dictionary):
     result = {}
 
     for key, value in dictionary.items():
-        key_split = key.split('/')[1]
+        key_split = key.split('\\')[1]
         parts = key_split.split('_')[0:3]  # Extract the necessary parts for prefix
         prefix = '_'.join(parts).split('.')[0] + '.png'
 
@@ -107,6 +111,7 @@ def concatenate_dictionary_values(dictionary):
             result[prefix] = value
 
     return result
+
 
 if __name__ == "__main__":
     # get path to every file in the directory
@@ -120,21 +125,21 @@ if __name__ == "__main__":
                              'detect text boxes\n')
     parser.add_argument('comics_path', type=str,
                         help='Path to comics or path to panels if --use_existing_panels is set to True', default=None)
-    parser.add_argument('--csv_path', '-c', type=str, help='Path to CSV file where you want to save the results')
+    parser.add_argument('csv_path', type=str, help='Path to CSV file where you want to save the results')
     parser.add_argument('--use_existing_panels', '-up', type=bool,
                         help='Use panels that have already been previously segmented', default=False)
     parser.add_argument('--storage_for_segmented_panels', '-sp', type=str,
-                        help='Path to directory where you want to save the segmented panels. Default = segmented-panels',
-                        default="segmented-panels")
+                        help='Path to directory where you want to save the segmented panels.',
+                        default='segmented-panels')
     parser.add_argument('--storage_for_cropped_text', '-st', type=str,
                         help='Path to directory where you want to save the cropped text. Default = cropped-text',
                         default="cropped-text")
     parser.add_argument('--visualize', '-v', type=bool, help='Visualize the results', default=False)
-    parser.add_argument('--accuracy_path', '-a', type=str, help='Calculate accuracy', default=False)
+    parser.add_argument('--accuracy_path', '-a', type=str, help='Provide optional path to ground truth data to get '
+                                                                'accuracy results', default=None)
 
     args = parser.parse_args()
 
     assert args.ocr_model in ['vision-api', 'tesseract'], "Invalid OCR model"
     assert args.text_boxes in ['none', 'standard', 'fine tuned'], "Invalid text box location strategy"
     main(args)
-
